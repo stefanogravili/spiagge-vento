@@ -9,7 +9,9 @@ Tempo richiesto: circa 30 minuti la prima volta, 10 minuti per le regioni succes
 
 ## 1. L'account Instagram
 
-1. Crea l'account Instagram (es. `spiagge.riparate.puglia`).
+1. Crea l'account Instagram. Per la Puglia e' `marecalmo.puglia`: la radice
+   `marecalmo` si ripete per ogni regione (`marecalmo.sicilia` e cosi' via),
+   cosi' il nome resta cercabile e riconoscibile man mano che si aggiungono.
 2. Impostazioni -> **Tipo di account** -> passa a **Account aziendale**.
    La pubblicazione via API e' impossibile su un account personale: e' una
    restrizione di Meta, non aggirabile.
