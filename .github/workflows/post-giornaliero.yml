@@ -1,0 +1,79 @@
+name: Post giornaliero
+
+on:
+  schedule:
+    # 05:00 UTC = 07:00 in Italia con l'ora legale, 06:00 con l'ora solare.
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+# Serve per ricommittare l'immagine nel repo: e' cosi' che ottiene un URL
+# pubblico, unico requisito non negoziabile dell'API di Instagram.
+permissions:
+  contents: write
+
+jobs:
+  pubblica:
+    runs-on: ubuntu-latest
+    strategy:
+      # Una regione alla volta: tutti i job scrivono sullo stesso branch.
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        include:
+          - regione: puglia
+            secret: PUGLIA
+          # Per aggiungere una regione: crea data/<slug>.json, aggiungi due
+          # righe qui e i due secret IG_USER_ID_<SECRET> / IG_TOKEN_<SECRET>.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+
+      - name: Genera il post
+        run: node src/index.js --regione=${{ matrix.regione }}
+
+      - name: Pubblica l'immagine nel repo
+        run: |
+          set -e
+          mkdir -p media
+          cp out/*.jpg media/
+          # Due immagini al giorno (post e storia): 120 file sono circa due mesi.
+          # Senza pulizia il repo crescerebbe di continuo.
+          ls -t media/*.jpg | tail -n +121 | xargs -r rm --
+          git config user.name "spiagge-vento-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add media
+          git diff --staged --quiet && echo "Nessuna immagine nuova" && exit 0
+          git commit -m "media: ${{ matrix.regione }} $(date +%F)"
+          git pull --rebase --autostash
+          git push
+
+      - name: Pubblica su Instagram
+        env:
+          IG_USER_ID: ${{ secrets[format('IG_USER_ID_{0}', matrix.secret)] }}
+          IG_TOKEN: ${{ secrets[format('IG_TOKEN_{0}', matrix.secret)] }}
+          IMAGE_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/media
+        run: node src/publish-cli.js
+
+      - name: Rinnova il token Instagram
+        # Il token dura 60 giorni. Riscrivendolo ogni giorno nei secret la
+        # pagina non richiede piu' alcun intervento manuale.
+        if: success() && hashFiles('out/token-rinnovato.txt') != ''
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: gh secret set IG_TOKEN_${{ matrix.secret }} --body "$(cat out/token-rinnovato.txt)"
+
+      - name: Conserva il post come artefatto
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-${{ matrix.regione }}
+          path: out/
+          retention-days: 14

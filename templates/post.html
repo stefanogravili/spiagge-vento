@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<style>
+  /* I font sono incorporati come data URI da render.js: nessuna dipendenza di
+     rete al momento dello screenshot, quindi nessun rischio di ripiego. */
+  __FONT__
+
+  /* Stampa a tinte piatte. Nessun gradiente, nessuna ombra, nessun raggio:
+     l'oggetto di riferimento e' un foglio stampato, non un'interfaccia. */
+  :root {
+    --carta: #E3DED0;
+    --terra: #CEC6B0;
+    --mare: #AFC0C4;
+    --inchiostro: #16232E;
+    --segnale: #DA3F1F;
+
+    --filo: 1.5px solid var(--inchiostro);
+    --filo-sottile: 1px solid rgba(22, 35, 46, .28);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1080px;
+    height: 1350px;
+    background: var(--carta);
+    color: var(--inchiostro);
+    font-family: 'Plex Mono', monospace;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Formato Storia: stesso foglio, respiro verticale maggiore e margini alti
+     e bassi che tengono i contenuti fuori dalle sovrapposizioni di Instagram
+     (avatar in cima, campo risposta in fondo). */
+  body.storia { height: 1920px; }
+  body.storia .foglio { padding: 210px 56px 250px; }
+  /* Deve restare allineata a PANELLO nello script: il disegno ha misure
+     proprie e una differenza qui lascerebbe una fascia di mare vuota. */
+  body.storia .carta-panello { height: 524px; }
+  body.storia .corpo { margin-top: 34px; }
+  body.storia .voce { padding: 22px 2px; }
+  body.storia .classifica { margin-top: 36px; }
+
+  /* Grana di stampa: rende la superficie materica invece che digitale. */
+  .grana {
+    position: absolute; inset: 0;
+    opacity: .16;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .foglio {
+    position: relative;
+    height: 100%;
+    padding: 52px 56px 44px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* --- Testata --- */
+
+  .occhiello {
+    display: flex;
+    justify-content: space-between;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+  .occhiello .destra { color: rgba(22, 35, 46, .6); }
+
+  h1 {
+    margin-top: 18px;
+    font-family: Anton, sans-serif;
+    font-weight: 400;
+    font-size: 92px;
+    line-height: .88;
+    letter-spacing: .005em;
+    text-transform: uppercase;
+  }
+  h1 em { font-style: normal; color: var(--segnale); }
+
+  .sottotesta {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: var(--filo);
+    display: flex;
+    justify-content: space-between;
+    font-size: 16px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: rgba(22, 35, 46, .68);
+  }
+
+  /* --- Corpo: carta a sinistra, quadro strumenti a destra --- */
+
+  .corpo {
+    margin-top: 26px;
+    display: flex;
+    gap: 30px;
+  }
+
+  .carta-panello {
+    width: 596px;
+    height: 486px;
+    border: var(--filo);
+    background: var(--mare);
+    position: relative;
+    flex: none;
+  }
+  .carta-panello svg { display: block; }
+
+  .strumenti {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .riquadro { border: var(--filo); padding: 16px 18px; }
+
+  .etichetta {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: rgba(22, 35, 46, .55);
+  }
+
+  /* Lettura del vento: e' il dato che spiega tutta la classifica. */
+  .lettura-vento { display: flex; align-items: center; gap: 16px; margin-top: 10px; }
+  .barba { flex: none; }
+  .vento-nome {
+    font-family: Anton, sans-serif;
+    font-size: 40px;
+    line-height: .9;
+    text-transform: uppercase;
+    color: var(--segnale);
+  }
+  .vento-dettaglio { font-size: 16px; letter-spacing: .04em; margin-top: 5px; }
+
+  .principio { font-size: 15.5px; line-height: 1.5; }
+  .principio b { font-weight: 600; }
+  .principio .sep { display: block; height: 1px; background: rgba(22,35,46,.28); margin: 10px 0; }
+
+  .conteggio { display: flex; align-items: baseline; gap: 10px; margin-top: 8px; }
+  .conteggio .numero { font-family: Anton, sans-serif; font-size: 52px; line-height: .8; }
+  .conteggio .su { font-size: 16px; letter-spacing: .04em; color: rgba(22,35,46,.6); }
+
+  /* --- Classifica --- */
+
+  .classifica { margin-top: 28px; border-top: var(--filo); }
+
+  .voce {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 13px 2px;
+    border-bottom: var(--filo-sottile);
+  }
+  .voce:last-child { border-bottom: none; }
+
+  .rango {
+    flex: none;
+    width: 40px; height: 40px;
+    display: grid; place-items: center;
+    border: var(--filo);
+    font-size: 19px; font-weight: 600;
+  }
+  /* Solo la prima posizione porta il colore segnale: la spesa cromatica sta
+     tutta li' e sulla rosa dei venti. */
+  .voce.prima .rango { background: var(--segnale); border-color: var(--segnale); color: var(--carta); }
+
+  .voce .testo { flex: 1; min-width: 0; }
+  .voce .nome {
+    font-family: Anton, sans-serif;
+    font-size: 33px;
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .voce.prima .nome { font-size: 39px; }
+  .voce .dove {
+    margin-top: 4px;
+    font-size: 14px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: rgba(22, 35, 46, .6);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .voce .misure { flex: none; text-align: right; font-variant-numeric: tabular-nums; }
+  .voce .misure .letture { font-size: 15px; letter-spacing: .03em; color: rgba(22,35,46,.72); }
+  .voce .misure .stato { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin-top: 3px; color: rgba(22,35,46,.5); }
+
+  .voce .indice {
+    flex: none;
+    width: 74px;
+    text-align: right;
+    font-family: Anton, sans-serif;
+    font-size: 42px;
+    line-height: .85;
+    font-variant-numeric: tabular-nums;
+  }
+  .voce.prima .indice { color: var(--segnale); font-size: 50px; }
+
+  /* --- Piede --- */
+
+  footer {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: var(--filo);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 16px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  footer .conto { font-weight: 600; }
+  footer .fonte { color: rgba(22, 35, 46, .55); }
+</style>
+</head>
+<body>
+  <!-- Le misure sono esplicite: senza, l'SVG assume il viewport predefinito di
+       300x150 e la grana si stampa solo nell'angolo. -->
+  <svg class="grana" width="1080" height="1350" viewBox="0 0 1080 1350"
+       preserveAspectRatio="none" aria-hidden="true">
+    <filter id="grana"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/></filter>
+    <rect width="1080" height="1350" filter="url(#grana)"/>
+  </svg>
+
+  <div class="foglio">
+    <div class="occhiello">
+      <span id="occhiello-sx"></span>
+      <span class="destra" id="occhiello-dx"></span>
+    </div>
+
+    <h1 id="titolo"></h1>
+
+    <div class="sottotesta">
+      <span id="sotto-sx"></span>
+      <span id="sotto-dx"></span>
+    </div>
+
+    <div class="corpo">
+      <div class="carta-panello" id="panello"></div>
+
+      <div class="strumenti">
+        <div class="riquadro">
+          <div class="etichetta">Vento dominante</div>
+          <div class="lettura-vento">
+            <div class="barba" id="barba"></div>
+            <div>
+              <div class="vento-nome" id="vento-nome"></div>
+              <div class="vento-dettaglio" id="vento-dettaglio"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="riquadro">
+          <div class="etichetta">Spiagge riparate</div>
+          <div class="conteggio">
+            <span class="numero" id="quante"></span>
+            <span class="su" id="quante-su"></span>
+          </div>
+        </div>
+
+        <div class="riquadro principio">
+          <div class="etichetta">Come si legge</div>
+          <span class="sep"></span>
+          Il vento che arriva <b>da terra</b> spiana il mare.<br>
+          Quello che arriva <b>dal mare</b> alza l'onda.<br>
+          <span class="sep"></span>
+          Conta l'esposizione della costa, non la forza del vento.
+        </div>
+      </div>
+    </div>
+
+    <div class="classifica" id="classifica"></div>
+
+    <footer>
+      <span class="conto" id="conto"></span>
+      <span class="fonte" id="fonte"></span>
+    </footer>
+  </div>
+
+<script>
+const D = __DATI__;
+
+if (D.formato === 'storia') document.body.classList.add('storia');
+
+/* ---------- Testi ---------- */
+
+document.getElementById('occhiello-sx').textContent = `Carta del vento — ${D.regione}`;
+document.getElementById('occhiello-dx').textContent = `N. ${D.numero}`;
+document.getElementById('titolo').innerHTML = 'Dove trovi il<br><em>mare calmo</em> oggi';
+document.getElementById('sotto-sx').textContent = D.data;
+document.getElementById('sotto-dx').textContent = 'Rilevazione 10:00 — 18:00';
+document.getElementById('vento-nome').textContent = D.vento.nome;
+document.getElementById('vento-dettaglio').innerHTML =
+  `${D.vento.nodi} nodi da ${D.vento.sigla}<br>${D.vento.gradi}&deg;`;
+document.getElementById('quante').textContent = D.buone;
+document.getElementById('quante-su').textContent = `su ${D.totale} rilevate`;
+document.getElementById('conto').textContent = D.account;
+document.getElementById('fonte').textContent = 'Dati Open-Meteo';
+
+/* ---------- Proiezione ----------
+   Equirettangolare con correzione del meridiano alla latitudine media: alla
+   scala di una regione l'errore e' invisibile e la forma resta corretta. */
+
+const PANELLO = { w: 596, h: D.formato === 'storia' ? 524 : 486, margine: 16 };
+const LAT_MEDIA = 40.9;
+const K = Math.cos(LAT_MEDIA * Math.PI / 180);
+
+const grezzo = ([lon, lat]) => [lon * K, -lat];
+
+// Il riquadro si calcola sulla sola regione protagonista: le regioni
+// confinanti devono poter uscire dal foglio.
+const puntiPuglia = D.coste.puglia.flat().map(grezzo);
+const xs = puntiPuglia.map((p) => p[0]);
+const ys = puntiPuglia.map((p) => p[1]);
+const minX = Math.min(...xs), maxX = Math.max(...xs);
+const minY = Math.min(...ys), maxY = Math.max(...ys);
+
+const scala = Math.min(
+  (PANELLO.w - PANELLO.margine * 2) / (maxX - minX),
+  (PANELLO.h - PANELLO.margine * 2) / (maxY - minY)
+);
+const offX = (PANELLO.w - (maxX - minX) * scala) / 2;
+const offY = (PANELLO.h - (maxY - minY) * scala) / 2;
+
+function proietta(lonlat) {
+  const [x, y] = grezzo(lonlat);
+  return [(x - minX) * scala + offX, (y - minY) * scala + offY];
+}
+
+const percorso = (anello) =>
+  anello.map((p, i) => (i ? 'L' : 'M') + proietta(p).map((n) => n.toFixed(1)).join(' ')).join('') + 'Z';
+
+/* ---------- Reticolato ----------
+   Il graticolato ai gradi interi e' una convenzione delle carte vere e da'
+   riferimento alla scala. */
+
+function reticolato() {
+  const linee = [];
+  for (let lon = 15; lon <= 19; lon++) {
+    const a = proietta([lon, 38]), b = proietta([lon, 43]);
+    linee.push(`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}"/>`);
+  }
+  for (let lat = 39; lat <= 42; lat++) {
+    const a = proietta([14, lat]), b = proietta([20, lat]);
+    linee.push(`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}"/>`);
+  }
+  return linee.join('');
+}
+
+/* ---------- Filetti di flusso ----------
+   Linee parallele nella direzione in cui il vento si muove: e' il modo in cui
+   una carta sinottica mostra il campo di vento. */
+
+function flusso() {
+  const verso = (D.vento.gradi + 180) % 360;
+  const rad = verso * Math.PI / 180;
+  const dx = Math.sin(rad), dy = -Math.cos(rad);
+  const px = -dy, py = dx; // normale, per distanziare le linee
+  const cx = PANELLO.w / 2, cy = PANELLO.h / 2;
+  const lungo = 900;
+  const segmenti = [];
+
+  for (let i = -14; i <= 14; i++) {
+    const ox = cx + px * i * 26, oy = cy + py * i * 26;
+    const x1 = ox - dx * lungo / 2, y1 = oy - dy * lungo / 2;
+    const x2 = ox + dx * lungo / 2, y2 = oy + dy * lungo / 2;
+    segmenti.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`);
+    // Una punta ogni tre filetti: indica il verso senza infittire il disegno.
+    if (i % 3 === 0) {
+      const mx = ox + dx * 60, my = oy + dy * 60;
+      const a1 = (verso + 145) * Math.PI / 180, a2 = (verso - 145) * Math.PI / 180;
+      segmenti.push(
+        `<path d="M${(mx + Math.sin(a1) * 9).toFixed(1)} ${(my - Math.cos(a1) * 9).toFixed(1)}` +
+        `L${mx.toFixed(1)} ${my.toFixed(1)}` +
+        `L${(mx + Math.sin(a2) * 9).toFixed(1)} ${(my - Math.cos(a2) * 9).toFixed(1)}"/>`
+      );
+    }
+  }
+  return segmenti.join('');
+}
+
+/* ---------- Disegno della carta ---------- */
+
+const contorni = D.coste.contorno.map((a) => `<path d="${percorso(a)}"/>`).join('');
+const puglia = D.coste.puglia.map((a) => `<path d="${percorso(a)}"/>`).join('');
+
+// Tutte le spiagge del dataset come punti minuti: mostra su quante rilevazioni
+// poggia la classifica.
+const punti = D.tutte.map((c) => {
+  const [x, y] = proietta(c);
+  return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2"/>`;
+}).join('');
+
+/* ---------- Segnaposti ----------
+   Due spiagge vicine, come Siponto e Zapponeta, avrebbero dischi sovrapposti e
+   illeggibili. Si allontanano i dischi quel tanto che basta e si lascia una
+   linea di richiamo verso il punto vero: e' la soluzione delle carte stampate. */
+
+const segnaposti = (() => {
+  const nodi = D.top.map((s, i) => {
+    const [x, y] = proietta([s.lon, s.lat]);
+    return { vero: [x, y], x, y, r: i === 0 ? 17 : 13, n: i + 1 };
+  });
+
+  for (let giro = 0; giro < 120; giro++) {
+    let fermo = true;
+    for (let i = 0; i < nodi.length; i++) {
+      for (let j = i + 1; j < nodi.length; j++) {
+        const a = nodi[i], b = nodi[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d = Math.hypot(dx, dy) || 0.01;
+        const minimo = a.r + b.r + 5;
+        if (d < minimo) {
+          const spinta = (minimo - d) / 2;
+          const ux = dx / d, uy = dy / d;
+          a.x -= ux * spinta; a.y -= uy * spinta;
+          b.x += ux * spinta; b.y += uy * spinta;
+          fermo = false;
+        }
+      }
+    }
+    if (fermo) break;
+  }
+
+  return nodi.map((p) => {
+    const scostato = Math.hypot(p.x - p.vero[0], p.y - p.vero[1]) > 3;
+    const richiamo = scostato
+      ? `<line x1="${p.vero[0].toFixed(1)}" y1="${p.vero[1].toFixed(1)}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}"
+               stroke="var(--segnale)" stroke-width="1.2"/>
+         <circle cx="${p.vero[0].toFixed(1)}" cy="${p.vero[1].toFixed(1)}" r="2.6" fill="var(--segnale)"/>`
+      : '';
+    return `
+      <g>
+        ${richiamo}
+        <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${p.r}"
+                fill="var(--segnale)" stroke="var(--carta)" stroke-width="1.5"/>
+        <text x="${p.x.toFixed(1)}" y="${(p.y + (p.r > 15 ? 6.5 : 5)).toFixed(1)}"
+              text-anchor="middle" fill="var(--carta)"
+              font-family="Plex Mono" font-weight="600"
+              font-size="${p.r > 15 ? 19 : 15}">${p.n}</text>
+      </g>`;
+  }).join('');
+})();
+
+// Scala grafica: 50 km proiettati con la stessa trasformazione della carta.
+const scalaKm = 50;
+const larghezzaScala = (scalaKm / 111.32) * K * scala;
+
+document.getElementById('panello').innerHTML = `
+<svg width="${PANELLO.w}" height="${PANELLO.h}" viewBox="0 0 ${PANELLO.w} ${PANELLO.h}">
+  <g stroke="var(--inchiostro)" stroke-width="0.6" opacity=".18">${reticolato()}</g>
+
+  <g fill="#C4BDA9" stroke="rgba(22,35,46,.35)" stroke-width="1">${contorni}</g>
+  <g fill="var(--terra)" stroke="var(--inchiostro)" stroke-width="1.6" stroke-linejoin="round">${puglia}</g>
+
+  <g stroke="var(--segnale)" stroke-width="1.1" fill="none" opacity=".42">${flusso()}</g>
+
+  <g fill="var(--inchiostro)" opacity=".45">${punti}</g>
+  ${segnaposti}
+
+  <g transform="translate(20, ${PANELLO.h - 26})" stroke="var(--inchiostro)" stroke-width="1.4">
+    <line x1="0" y1="0" x2="${larghezzaScala.toFixed(1)}" y2="0"/>
+    <line x1="0" y1="-5" x2="0" y2="5"/>
+    <line x1="${larghezzaScala.toFixed(1)}" y1="-5" x2="${larghezzaScala.toFixed(1)}" y2="5"/>
+    <text x="${(larghezzaScala / 2).toFixed(1)}" y="-10" text-anchor="middle" stroke="none"
+          fill="var(--inchiostro)" font-family="Plex Mono" font-size="13"
+          letter-spacing="1.4">${scalaKm} KM</text>
+  </g>
+
+  <g transform="translate(${PANELLO.w - 34}, 34)" stroke="var(--inchiostro)" stroke-width="1.4">
+    <line x1="0" y1="16" x2="0" y2="-14"/>
+    <path d="M-5 -7 L0 -16 L5 -7" fill="none"/>
+    <text x="0" y="30" text-anchor="middle" stroke="none" fill="var(--inchiostro)"
+          font-family="Plex Mono" font-weight="600" font-size="14">N</text>
+  </g>
+</svg>`;
+
+/* ---------- Barbetta del vento ----------
+   Simbolo meteorologico reale: l'asta punta verso la provenienza del vento,
+   ogni barba intera vale 10 nodi, ogni mezza barba 5. */
+
+function barbetta(gradi, nodi) {
+  const L = 58;
+  const arrotondati = Math.round(nodi / 5) * 5;
+  const intere = Math.floor(arrotondati / 10);
+  const mezza = arrotondati % 10 >= 5;
+
+  const tratti = [`<line x1="0" y1="0" x2="0" y2="${-L}"/>`];
+  let y = -L;
+  for (let i = 0; i < intere; i++) {
+    tratti.push(`<line x1="0" y1="${y}" x2="22" y2="${y - 10}"/>`);
+    y += 12;
+  }
+  if (mezza) tratti.push(`<line x1="0" y1="${y}" x2="12" y2="${y - 5.5}"/>`);
+  // Calma: il simbolo convenzionale e' un cerchio attorno alla stazione.
+  if (!intere && !mezza) tratti.push('<circle cx="0" cy="0" r="9" fill="none"/>');
+
+  return `
+  <svg width="92" height="92" viewBox="-46 -46 92 92">
+    <g transform="rotate(${gradi})" stroke="var(--inchiostro)" stroke-width="3.2"
+       stroke-linecap="round" fill="none">${tratti.join('')}</g>
+    <circle cx="0" cy="0" r="4" fill="var(--inchiostro)"/>
+  </svg>`;
+}
+
+document.getElementById('barba').innerHTML = barbetta(D.vento.gradi, D.vento.nodi);
+
+/* ---------- Classifica ---------- */
+
+document.getElementById('classifica').innerHTML = D.top.map((s, i) => `
+  <div class="voce ${i === 0 ? 'prima' : ''}">
+    <div class="rango">${i + 1}</div>
+    <div class="testo">
+      <div class="nome">${s.nome}</div>
+      <div class="dove">${s.comune} &middot; ${s.zona}</div>
+    </div>
+    <div class="misure">
+      <div class="letture">${s.vento} kn ${s.ventoSigla} &middot; onda ${s.onda} m</div>
+      <div class="stato">Costa verso ${s.esposizione}</div>
+    </div>
+    <div class="indice">${s.punteggio}</div>
+  </div>
+`).join('');
+</script>
+</body>
+</html>

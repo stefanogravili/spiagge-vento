@@ -1,0 +1,17 @@
+{
+  "name": "spiagge-vento",
+  "version": "1.0.0",
+  "description": "Genera e pubblica ogni giorno su Instagram le spiagge piu riparate dal vento",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "preview": "node src/index.js --mostra-caption",
+    "publish": "node src/publish-cli.js",
+    "coste": "node scripts/estrai-costa.js",
+    "font": "node scripts/scarica-font.js",
+    "postinstall": "playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}
