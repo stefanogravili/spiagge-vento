@@ -1,11 +1,14 @@
-// Pubblicazione su Instagram tramite Graph API.
+// Pubblicazione su Instagram tramite l'API Instagram con accesso di Instagram.
+// Il token dell'account (che inizia per IGAA...) lavora su graph.instagram.com,
+// non sul dominio di Facebook: e' il flusso "Instagram Business Login".
 //
 // Vincolo dell'API: l'immagine non si carica come file, va indicata come URL
 // pubblico. Per questo il workflow prima committa il JPG nel repo e poi passa
 // qui l'URL raw di GitHub.
 
+const HOST = 'https://graph.instagram.com';
 const VERSIONE = 'v21.0';
-const BASE = `https://graph.facebook.com/${VERSIONE}`;
+const BASE = `${HOST}/${VERSIONE}`;
 
 async function chiama(url, opzioni) {
   const res = await fetch(url, opzioni);
@@ -67,8 +70,9 @@ export async function pubblica({ igUserId, token, imageUrl, caption, storia = fa
  * non scade mai e non serve rimettere mano alla configurazione.
  */
 export async function rinnovaToken(token) {
+  // Il rinnovo sta sulla radice del dominio, senza il prefisso di versione.
   const r = await chiama(
-    `${BASE}/refresh_access_token?grant_type=ig_refresh_token&access_token=${token}`
+    `${HOST}/refresh_access_token?grant_type=ig_refresh_token&access_token=${token}`
   );
   return { token: r.access_token, scadeTraGiorni: Math.round(r.expires_in / 86400) };
 }
