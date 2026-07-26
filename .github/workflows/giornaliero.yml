@@ -1,0 +1,64 @@
+name: Pubblicazione giornaliera
+
+on:
+  schedule:
+    # 16:00 UTC = 18:00 in Italia con l'ora legale (17:00 con l'ora solare).
+    - cron: '0 16 * * *'
+  workflow_dispatch:
+
+# Serve per ricommittare le immagini nel repo: e' cosi' che ottengono un URL
+# pubblico, unico requisito non negoziabile dell'API di Instagram.
+permissions:
+  contents: write
+
+jobs:
+  pubblica:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+
+      - name: Genera le immagini del giorno dopo
+        run: node scripts/genera-giornaliero.js
+
+      - name: Carica le immagini nel repo
+        run: |
+          set -e
+          # Tiene solo gli ultimi ~60 file datati: senza pulizia il repo cresce.
+          ls -t media/giorno-*.jpg 2>/dev/null | tail -n +61 | xargs -r rm -- || true
+          git config user.name "marecalmo-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add media
+          git diff --staged --quiet && echo "Nessuna immagine nuova" || git commit -m "media: $(date +%F)"
+          git pull --rebase --autostash
+          git push
+
+      - name: Pubblica su Instagram
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN_PUGLIA }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID_PUGLIA }}
+          IMAGE_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/media
+        run: node scripts/pubblica-giornaliero.js
+
+      - name: Rinnova il token Instagram
+        # Il token dura 60 giorni. Riscrivendolo ogni giorno nei secret la
+        # pagina non richiede piu' alcun intervento manuale.
+        if: success() && hashFiles('out/token-rinnovato.txt') != ''
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: gh secret set IG_TOKEN_PUGLIA --body "$(cat out/token-rinnovato.txt)"
+
+      - name: Conserva gli output come artefatto
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: giornaliero
+          path: out/
+          retention-days: 7
