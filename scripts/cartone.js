@@ -76,7 +76,28 @@ export async function componiHtmlCartone({ titolo, eyebrow, sottotitolo, valutat
   const percorso = (a) => a.map((p, i) => (i ? 'L' : 'M') + proietta(p).map((n) => n.toFixed(1)).join(' ')).join('') + 'Z';
   const terra = [...coste.puglia, ...coste.contorno].map((a) => `<path d="${percorso(a)}"/>`).join('');
 
-  const nodi = valutate.map((s) => ({ s, punto: proietta([s.lon, s.lat]) })).sort((a, b) => a.punto[1] - b.punto[1]);
+  // Aggancia ogni bollino al punto piu' vicino della costa disegnata: cosi' non
+  // resta a galleggiare in mare quando la semplificazione taglia un golfo.
+  const anelliProj = coste.puglia.map((a) => a.map(proietta));
+  const puntoVicinoSeg = (p, a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const l2 = dx * dx + dy * dy || 1e-9;
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2));
+    return [a[0] + t * dx, a[1] + t * dy];
+  };
+  const agganciaCosta = (p) => {
+    let best = p, bd = Infinity;
+    for (const anello of anelliProj) {
+      for (let i = 0; i < anello.length - 1; i++) {
+        const q = puntoVicinoSeg(p, anello[i], anello[i + 1]);
+        const d = (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2;
+        if (d < bd) { bd = d; best = q; }
+      }
+    }
+    return best;
+  };
+
+  const nodi = valutate.map((s) => ({ s, punto: agganciaCosta(proietta([s.lon, s.lat])) })).sort((a, b) => a.punto[1] - b.punto[1]);
   const top = 500, bot = 1600, gap = Math.min(96, (bot - top) / Math.max(1, nodi.length - 1));
   nodi.forEach((n, i) => { n.ey = top + i * gap; });
   const ancoraX = seaEst ? panelX - 30 : panelX + MW + 30;
