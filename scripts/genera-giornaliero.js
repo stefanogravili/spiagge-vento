@@ -62,6 +62,7 @@ async function main() {
   const browser = await chromium.launch();
   const manifest = [];
   const righeMeteo = [];
+  const controllo = { province: [], problemi: [] };
   let tutte = [], data = null;
 
   try {
@@ -72,6 +73,15 @@ async function main() {
       data = dati.data;
       tutte = tutte.concat(dati.valutate);
       righeMeteo.push({ nome: t.label, stato: dominante(dati.valutate) });
+
+      // Dati per il revisore: conteggio stati e segnalazione di dati mancanti.
+      const stati = { calmo: 0, mosso: 0, moltomosso: 0 };
+      for (const s of dati.valutate) {
+        if (!(s.statoMare in stati)) controllo.problemi.push(`${t.key}: stato mare mancante per ${s.nome}`);
+        else stati[s.statoMare]++;
+        if (s.ventoNodi == null || Number.isNaN(s.ventoNodi)) controllo.problemi.push(`${t.key}: vento mancante per ${s.nome}`);
+      }
+      controllo.province.push({ key: t.key, spiagge: dati.valutate.length, stati, ventoNodi: dati.ventoNodi });
 
       const html = await componiHtmlCartone({
         titolo: t.titolo, eyebrow: t.eyebrow, sottotitolo: t.sottotitolo,
@@ -101,6 +111,15 @@ async function main() {
 
     // Pulizia: tiene in media/ solo gli ultimi ~40 file datati.
     await writeFile(path.join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
+
+    // Riepilogo per il revisore (scripts/revisore.js lo controlla prima di pubblicare).
+    controllo.data = data;
+    controllo.tempMax = tempMax;
+    controllo.ventoNodi = ventoNodi;
+    controllo.ventoNome = nomeVento(ventoGradi);
+    controllo.immagini = manifest.map((m) => ({ nome: m.nome, tipo: m.tipo }));
+    await writeFile(path.join(OUT, 'controllo.json'), JSON.stringify(controllo, null, 2), 'utf8');
+
     console.log(`\nManifest scritto: ${manifest.length} elementi per il ${data}.`);
   } finally {
     await browser.close();

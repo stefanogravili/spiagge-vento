@@ -29,6 +29,9 @@ Tutto riferito al **giorno dopo**.
  genera-giornaliero.js ──▶ scarica meteo → calcola mare → disegna 7 immagini in media/
         │
         ▼
+ revisore.js            ──▶ controlla dati e immagini. Se qualcosa non torna, BLOCCA tutto
+        │
+        ▼
  git commit + push       ──▶ le immagini diventano raggiungibili via URL pubblico
         │
         ▼
@@ -54,7 +57,8 @@ pubblico) e poi pubblicate dal loro indirizzo `raw.githubusercontent.com`.
 | **Tavola provincia** | `scripts/cartone.js` | Disegna la storia cartoon di una zona (mappa reale + bollini agganciati alla costa). |
 | **Post meteo** | `scripts/meteo-post.js` | Disegna il post feed col meteo e il riepilogo province. |
 | **Presentazione** | `scripts/presentazione.js` | Disegna il post/storia di presentazione della pagina. |
-| **Orchestratore** | `scripts/genera-giornaliero.js` | Genera tutte le immagini del giorno dopo e scrive `out/manifest.json`. |
+| **Orchestratore** | `scripts/genera-giornaliero.js` | Genera tutte le immagini del giorno dopo e scrive `out/manifest.json` + `out/controllo.json`. |
+| **Revisore** | `scripts/revisore.js` | Controlla dati e immagini prima della pubblicazione: data corretta, temperatura/vento plausibili, tutte le province complete, immagini non vuote. Se boccia, **blocca la pubblicazione**. |
 | **Pubblicatore** | `scripts/pubblica-giornaliero.js` | Pubblica quanto elencato nel manifest e rinnova il token. |
 | **Automa** | `.github/workflows/giornaliero.yml` | Fa partire tutto alle 18:00. |
 
