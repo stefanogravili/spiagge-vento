@@ -1,87 +1,66 @@
-// Post + storia di presentazione della pagina, nello stile cartoon.
+// Post + storia di presentazione della pagina — stile premium (Inter, minimal).
 // Uso: node scripts/presentazione.js
 
 import { chromium } from 'playwright';
-import { readFile, mkdir } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fontCssInter, logoMark } from './premium.js';
 
 const RADICE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(RADICE, 'out', 'presentazione');
+const W = 1080, M = 80;
 
-const SKY1 = '#AEE3F0', SKY2 = '#D6F2F8';
-const SEA = '#38B9C7', SEA_D = '#2A9DAB';
-const SAND = '#F5DA92';
-const INK = '#243b44';
-const VERDE = '#34C759', GIALLO = '#FFC53D', ROSSO = '#FF5B4C', SOLE = '#FFCB3B';
+const BG = '#F7F3EC', INK = '#1F2E3A', MUTED = '#6A7782', HAIR = '#E4DCCB';
+const VERDE = '#3BB273', GIALLO = '#E8B23E', ROSSO = '#E1614A';
 
-async function fontCss() {
-  const f = [['Fredoka', 500, 'fredoka-500.woff2'], ['Fredoka', 700, 'fredoka-700.woff2']];
-  const out = await Promise.all(f.map(async ([fam, peso, file]) => {
-    const dati = await readFile(path.join(RADICE, 'assets', 'font', file));
-    return `@font-face{font-family:'${fam}';font-weight:${peso};font-style:normal;src:url(data:font/woff2;base64,${dati.toString('base64')}) format('woff2')}`;
-  }));
-  return out.join('\n');
-}
-
-function sole(cx, cy, r) {
-  const raggi = Array.from({ length: 12 }, (_, i) => {
-    const a = (i * 30) * Math.PI / 180;
-    return `<line x1="${cx + Math.cos(a) * (r + 8)}" y1="${cy + Math.sin(a) * (r + 8)}" x2="${cx + Math.cos(a) * (r + 28)}" y2="${cy + Math.sin(a) * (r + 28)}" stroke="${SOLE}" stroke-width="10" stroke-linecap="round"/>`;
-  }).join('');
-  return `${raggi}
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="${SOLE}" stroke="${INK}" stroke-width="6"/>
-    <circle cx="${cx - r * 0.32}" cy="${cy - r * 0.12}" r="7" fill="${INK}"/>
-    <circle cx="${cx + r * 0.32}" cy="${cy - r * 0.12}" r="7" fill="${INK}"/>
-    <path d="M${cx - r * 0.36} ${cy + r * 0.22} Q ${cx} ${cy + r * 0.62} ${cx + r * 0.36} ${cy + r * 0.22}" fill="none" stroke="${INK}" stroke-width="6" stroke-linecap="round"/>`;
-}
-
-function componi(W, H) {
-  const cx = W / 2;
-  const onde = Array.from({ length: 5 }, (_, i) =>
-    `<path d="M0 ${H - 300 + i * 70} q ${W / 4} -40 ${W / 2} 0 t ${W / 2} 0 V ${H} H0 Z" fill="${i % 2 ? SEA_D : SEA}" opacity="${0.5 + i * 0.1}"/>`
-  ).join('');
-
-  // Tutto in proporzione all'altezza, cosi' funziona sia feed (1350) sia storia (1920).
-  const cardY = H * 0.575, cardH = H * 0.235;
+function componi(H) {
+  const storia = H > 1400;
+  const topY = storia ? 300 : 150;
+  const cardY = storia ? 1120 : 800;
+  const cardH = 300;
   const riga = (y, col, titolo, testo) => `
-    <circle cx="${cx - 330}" cy="${y}" r="24" fill="${col}" stroke="${INK}" stroke-width="5"/>
-    <text x="${cx - 288}" y="${y - 2}" font-family="Fredoka" font-weight="700" font-size="38" fill="${INK}">${titolo}</text>
-    <text x="${cx - 288}" y="${y + 36}" font-family="Fredoka" font-weight="500" font-size="28" fill="${INK}" opacity=".75">${testo}</text>`;
+    <circle cx="${M + 52}" cy="${y}" r="13" fill="${col}"/>
+    <text x="${M + 84}" y="${y + 8}" font-family="Inter" font-weight="700" font-size="34" fill="${INK}">${titolo}</text>
+    <text x="${W - M - 30}" y="${y + 8}" text-anchor="end" font-family="Inter" font-weight="500" font-size="26" fill="${MUTED}">${testo}</text>`;
 
   return `
   <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${SKY1}"/><stop offset="1" stop-color="${SKY2}"/></linearGradient></defs>
-    <rect width="${W}" height="${H}" fill="url(#sky)"/>
-    ${onde}
-    ${sole(cx, H * 0.17, 88)}
-    <text x="${cx}" y="${H * 0.37}" text-anchor="middle" font-family="Fredoka" font-weight="700" font-size="126" fill="${INK}">Mare Calmo</text>
-    <text x="${cx}" y="${H * 0.435}" text-anchor="middle" font-family="Fredoka" font-weight="700" font-size="82" fill="${SEA_D}">PUGLIA</text>
-    <text x="${cx}" y="${H * 0.5}" text-anchor="middle" font-family="Fredoka" font-weight="500" font-size="38" fill="${INK}">Dove fare il bagno col mare piatto,</text>
-    <text x="${cx}" y="${H * 0.535}" text-anchor="middle" font-family="Fredoka" font-weight="500" font-size="38" fill="${INK}">provincia per provincia.</text>
+    <defs><linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#49B8C7"/><stop offset="1" stop-color="#177A8A"/></linearGradient></defs>
+    <rect width="${W}" height="${H}" fill="${BG}"/>
 
-    <rect x="${cx - 400}" y="${cardY}" width="800" height="${cardH}" rx="40" fill="#fff" stroke="${INK}" stroke-width="6"/>
-    ${riga(cardY + cardH * 0.28, VERDE, 'Calmo', 'mare piatto, bagno perfetto')}
-    ${riga(cardY + cardH * 0.55, GIALLO, 'Mosso', 'qualche onda, ma si sta')}
-    ${riga(cardY + cardH * 0.82, ROSSO, 'Molto mosso', 'meglio un altro giorno')}
+    ${logoMark(M, topY, 56)}
+    <text x="${M}" y="${topY + 130}" font-family="Inter" font-weight="700" font-size="21" letter-spacing="2" fill="${MUTED}">MARE CALMO PUGLIA</text>
 
-    <text x="${cx}" y="${H * 0.885}" text-anchor="middle" font-family="Fredoka" font-weight="500" font-size="33" fill="#fff">Calcolato sul vento e sulle onde reali</text>
-    <text x="${cx}" y="${H * 0.918}" text-anchor="middle" font-family="Fredoka" font-weight="500" font-size="33" fill="#fff">Ogni sera, il mare del giorno dopo</text>
-    <text x="${cx}" y="${H * 0.965}" text-anchor="middle" font-family="Fredoka" font-weight="700" font-size="50" fill="#fff">@marecalmo.puglia</text>
+    <text x="${M}" y="${topY + 250}" font-family="Inter" font-weight="800" font-size="86" letter-spacing="-3" fill="${INK}">Dove fare il bagno,</text>
+    <text x="${M}" y="${topY + 344}" font-family="Inter" font-weight="800" font-size="86" letter-spacing="-3" fill="${INK}">ogni giorno.</text>
+    <text x="${M}" y="${topY + 410}" font-family="Inter" font-weight="500" font-size="30" fill="${MUTED}">Le spiagge col mare più calmo della Puglia,</text>
+    <text x="${M}" y="${topY + 452}" font-family="Inter" font-weight="500" font-size="30" fill="${MUTED}">provincia per provincia.</text>
+
+    <text x="${M}" y="${cardY - 20}" font-family="Inter" font-weight="600" font-size="18" letter-spacing="1.2" fill="${MUTED}">COME LEGGERE IL MARE</text>
+    <rect x="${M}" y="${cardY}" width="${W - M * 2}" height="${cardH}" rx="22" fill="#FFFFFF" stroke="${HAIR}" stroke-width="1.5"/>
+    ${riga(cardY + 66, VERDE, 'Calmo', 'mare piatto, bagno ideale')}
+    <line x1="${M + 30}" y1="${cardY + 100}" x2="${W - M - 30}" y2="${cardY + 100}" stroke="${HAIR}" stroke-width="1.5"/>
+    ${riga(cardY + 150, GIALLO, 'Poco mosso', 'qualche onda, ma si sta')}
+    <line x1="${M + 30}" y1="${cardY + 184}" x2="${W - M - 30}" y2="${cardY + 184}" stroke="${HAIR}" stroke-width="1.5"/>
+    ${riga(cardY + 234, ROSSO, 'Mosso', 'meglio un altro giorno')}
+
+    <text x="${M}" y="${H - 128}" font-family="Inter" font-weight="500" font-size="26" fill="${MUTED}">Calcolato sul vento e sulle onde reali. Ogni sera, il mare del giorno dopo.</text>
+    <text x="${M}" y="${H - 68}" font-family="Inter" font-weight="700" font-size="30" fill="${INK}">@marecalmo.puglia</text>
   </svg>`;
 }
 
 async function main() {
-  const font = await fontCss();
+  const font = await fontCssInter();
   await mkdir(OUT, { recursive: true });
   const browser = await chromium.launch();
   try {
-    for (const [nome, W, H] of [['feed', 1080, 1350], ['storia', 1080, 1920]]) {
-      const html = `<!doctype html><html><head><meta charset="utf-8"><style>${font}*{margin:0;padding:0}</style></head><body style="margin:0">${componi(W, H)}</body></html>`;
+    for (const [nome, H] of [['feed', 1350], ['storia', 1920]]) {
+      const html = `<!doctype html><html><head><meta charset="utf-8"><style>${font}*{margin:0;padding:0}</style></head><body style="margin:0">${componi(H)}</body></html>`;
       const p = await browser.newPage({ viewport: { width: W, height: H } });
       await p.setContent(html, { waitUntil: 'load' });
       await p.evaluate(() => document.fonts.ready);
-      await p.screenshot({ path: path.join(OUT, `presentazione-${nome}.jpg`), type: 'jpeg', quality: 94 });
+      await p.screenshot({ path: path.join(OUT, `presentazione-${nome}.jpg`), type: 'jpeg', quality: 95 });
       await p.close();
       console.log(`presentazione-${nome}.jpg`);
     }
