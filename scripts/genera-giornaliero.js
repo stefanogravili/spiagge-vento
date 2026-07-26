@@ -12,8 +12,11 @@ import { fileURLToPath } from 'node:url';
 import { provinciaDi } from '../src/province.js';
 import { cardinale, nomeVento } from '../src/geo.js';
 import { preparaDati } from './manifesto.js';
-import { componiHtmlCartone } from './cartone.js';
+import { componiHtmlPremium } from './premium.js';
 import { componiMeteoPost } from './meteo-post.js';
+
+// Giorno: 1 = domani (automazione 18:00), 0 = oggi (pubblicazione manuale).
+const OFFSET = process.argv[2] != null ? Number(process.argv[2]) : 1;
 
 const RADICE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MEDIA = path.join(RADICE, 'media');
@@ -69,7 +72,7 @@ async function main() {
     for (const t of TARGET) {
       const spiagge = regione.spiagge.filter(t.sel);
       if (!spiagge.length) continue;
-      const dati = await preparaDati(spiagge, regione.fuso, 1); // giorno dopo
+      const dati = await preparaDati(spiagge, regione.fuso, OFFSET);
       data = dati.data;
       tutte = tutte.concat(dati.valutate);
       righeMeteo.push({ nome: t.label, stato: dominante(dati.valutate) });
@@ -83,9 +86,9 @@ async function main() {
       }
       controllo.province.push({ key: t.key, spiagge: dati.valutate.length, stati, ventoNodi: dati.ventoNodi });
 
-      const html = await componiHtmlCartone({
-        titolo: t.titolo, eyebrow: t.eyebrow, sottotitolo: t.sottotitolo,
-        ...dati, coste, account: regione.account,
+      const html = await componiHtmlPremium({
+        titolo: t.titolo, eyebrow: t.eyebrow,
+        ...dati, coste, account: regione.account, H: 1920,
       });
       const nome = `giorno-${data}-${t.key}.jpg`;
       await renderFile(browser, html, path.join(MEDIA, nome), 1080, 1920);

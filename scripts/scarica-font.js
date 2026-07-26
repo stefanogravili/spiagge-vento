@@ -25,6 +25,12 @@ const FONT = [
   // Per la versione cartoon: font tondo e giocoso.
   { file: 'fredoka-500.woff2', css: 'family=Fredoka:wght@500' },
   { file: 'fredoka-700.woff2', css: 'family=Fredoka:wght@700' },
+  // Per il brand premium: Inter, massima leggibilita'.
+  { file: 'inter-400.woff2', css: 'family=Inter:wght@400' },
+  { file: 'inter-500.woff2', css: 'family=Inter:wght@500' },
+  { file: 'inter-600.woff2', css: 'family=Inter:wght@600' },
+  { file: 'inter-700.woff2', css: 'family=Inter:wght@700' },
+  { file: 'inter-800.woff2', css: 'family=Inter:wght@800' },
 ];
 
 async function scarica({ file, css }) {
