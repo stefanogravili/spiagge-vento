@@ -31,7 +31,7 @@ async function getJson(url) {
 }
 
 /** Vento e temperatura per ogni spiaggia (punto a terra). */
-async function fetchVento(spiagge, fuso) {
+async function fetchVento(spiagge, fuso, giorni) {
   const risultati = [];
   for (const gruppo of chunks(spiagge, CHUNK)) {
     const params = new URLSearchParams({
@@ -40,7 +40,7 @@ async function fetchVento(spiagge, fuso) {
       hourly: 'wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m',
       wind_speed_unit: 'kn',
       timezone: fuso,
-      forecast_days: 1,
+      forecast_days: giorni,
     });
     risultati.push(...(await getJson(`${API_METEO}?${params}`)));
   }
@@ -52,7 +52,7 @@ async function fetchVento(spiagge, fuso) {
  * 6 km al largo nella direzione in cui guarda la spiaggia: sulla battigia
  * il modello marino restituirebbe valori nulli.
  */
-async function fetchOnde(spiagge, fuso) {
+async function fetchOnde(spiagge, fuso, giorni) {
   const puntiMare = spiagge.map((s) => movePoint(s.lat, s.lon, s.facing, 6));
   const risultati = [];
   for (const gruppo of chunks(puntiMare, CHUNK)) {
@@ -61,7 +61,7 @@ async function fetchOnde(spiagge, fuso) {
       longitude: gruppo.map((p) => p.lon).join(','),
       hourly: 'wave_height',
       timezone: fuso,
-      forecast_days: 1,
+      forecast_days: giorni,
     });
     try {
       risultati.push(...(await getJson(`${API_MARINE}?${params}`)));
@@ -77,11 +77,12 @@ async function fetchOnde(spiagge, fuso) {
 const media = (v) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : null);
 const massimo = (v) => (v.length ? Math.max(...v) : null);
 
-/** Estrae i valori nella fascia balneare, scartando i null del modello. */
-function fasciaBalneare(times, valori) {
+/** Estrae i valori nella fascia balneare del giorno scelto, scartando i null. */
+function fasciaBalneare(times, valori, giorno) {
   if (!valori) return [];
   const out = [];
   for (let i = 0; i < times.length; i++) {
+    if (times[i].slice(0, 10) !== giorno) continue;
     const ora = Number(times[i].slice(11, 13));
     if (ora >= ORA_INIZIO && ora <= ORA_FINE && valori[i] != null) out.push(valori[i]);
   }
@@ -107,22 +108,25 @@ function direzioneMedia(gradi) {
  * Restituisce, per ogni spiaggia, le condizioni sintetiche della giornata.
  * Un solo giro di chiamate per tutta la regione.
  */
-export async function condizioniGiornata(spiagge, fuso) {
+export async function condizioniGiornata(spiagge, fuso, offset = 0) {
+  const giorni = offset + 1;
   const [vento, onde] = await Promise.all([
-    fetchVento(spiagge, fuso),
-    fetchOnde(spiagge, fuso),
+    fetchVento(spiagge, fuso, giorni),
+    fetchOnde(spiagge, fuso, giorni),
   ]);
 
   return spiagge.map((spiaggia, i) => {
     const v = vento[i];
     const times = v.hourly.time;
+    // Data del giorno richiesto (oggi = offset 0, domani = offset 1).
+    const giorno = times[offset * 24].slice(0, 10);
 
-    const velocita = fasciaBalneare(times, v.hourly.wind_speed_10m);
-    const raffiche = fasciaBalneare(times, v.hourly.wind_gusts_10m);
-    const direzioni = fasciaBalneare(times, v.hourly.wind_direction_10m);
-    const temperature = fasciaBalneare(times, v.hourly.temperature_2m);
+    const velocita = fasciaBalneare(times, v.hourly.wind_speed_10m, giorno);
+    const raffiche = fasciaBalneare(times, v.hourly.wind_gusts_10m, giorno);
+    const direzioni = fasciaBalneare(times, v.hourly.wind_direction_10m, giorno);
+    const temperature = fasciaBalneare(times, v.hourly.temperature_2m, giorno);
     const altezzaOnda = onde[i]
-      ? fasciaBalneare(onde[i].hourly.time, onde[i].hourly.wave_height)
+      ? fasciaBalneare(onde[i].hourly.time, onde[i].hourly.wave_height, giorno)
       : [];
 
     return {
@@ -134,7 +138,7 @@ export async function condizioniGiornata(spiagge, fuso) {
       temperatura: massimo(temperature),
       onda: media(altezzaOnda),
       ondaMax: massimo(altezzaOnda),
-      dataRiferimento: times[0].slice(0, 10),
+      dataRiferimento: giorno,
     };
   });
 }

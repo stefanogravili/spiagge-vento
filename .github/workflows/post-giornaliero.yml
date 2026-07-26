@@ -1,9 +1,9 @@
 name: Post giornaliero
 
 on:
-  schedule:
-    # 05:00 UTC = 07:00 in Italia con l'ora legale, 06:00 con l'ora solare.
-    - cron: '0 5 * * *'
+  # Vecchia automazione "carta del vento" disattivata: la pagina ora usa il
+  # formato cartoon per provincia, pubblicato dal nuovo flusso. Resta solo
+  # l'avvio manuale, per non pubblicare per sbaglio la grafica vecchia.
   workflow_dispatch:
 
 # Serve per ricommittare l'immagine nel repo: e' cosi' che ottiene un URL

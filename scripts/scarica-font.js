@@ -17,6 +17,14 @@ const FONT = [
   { file: 'anton-400.woff2', css: 'family=Anton' },
   { file: 'plexmono-400.woff2', css: 'family=IBM+Plex+Mono:wght@400' },
   { file: 'plexmono-600.woff2', css: 'family=IBM+Plex+Mono:wght@600' },
+  // Per il manifesto vintage: display da poster + serif caldo per i nomi.
+  { file: 'bebas-400.woff2', css: 'family=Bebas+Neue' },
+  { file: 'spectral-400.woff2', css: 'family=Spectral:wght@400' },
+  { file: 'spectral-600.woff2', css: 'family=Spectral:wght@600' },
+  { file: 'spectral-italic.woff2', css: 'family=Spectral:ital,wght@1,500' },
+  // Per la versione cartoon: font tondo e giocoso.
+  { file: 'fredoka-500.woff2', css: 'family=Fredoka:wght@500' },
+  { file: 'fredoka-700.woff2', css: 'family=Fredoka:wght@700' },
 ];
 
 async function scarica({ file, css }) {

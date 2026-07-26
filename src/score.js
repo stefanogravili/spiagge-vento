@@ -33,6 +33,15 @@ export function valuta(c) {
   // Se il modello marino non copre il punto, si stima l'onda dal solo vento.
   const onda = c.onda != null ? c.onda : clamp(Math.max(0, onshore) / 22, 0, 2.5);
 
+  // Stato del mare secondo la scala ufficiale (Douglas), da un'onda "efficace":
+  // il mare-vento generato dalla componente che entra da mare, combinato con
+  // l'onda del modello marino (ridotta se il vento e' da terra). E' la stima
+  // piu' vicina a cosa trova davvero il bagnante sotto costa.
+  const mareVento = Math.pow(Math.max(0, onshore), 1.3) * 0.02;
+  const swell = (c.onda != null ? c.onda : 0) * (onshore >= 0 ? 1 : 0.45);
+  const ondaEff = Math.max(mareVento, swell);
+  const statoMare = ondaEff < 0.5 ? 'calmo' : ondaEff < 1.25 ? 'mosso' : 'moltomosso';
+
   const penalita =
     Math.max(0, onshore) * PESO_ONSHORE +
     onda * PESO_ONDA +
@@ -44,6 +53,8 @@ export function valuta(c) {
   return {
     ...c,
     onda,
+    ondaEff,
+    statoMare,
     onshore,
     punteggio,
     etichetta: l.etichetta,
